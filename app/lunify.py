@@ -3,7 +3,7 @@
 # Author:       Andrew "Shabadoo" Abbey
 # Description:  Merges lua project into single file.
 # Date:         03 Feb 2026
-# Updated:      04 Feb 2026
+# Updated:      05 Feb 2026
 #-------------------------------------------------------------------------------
 
 import os
@@ -18,12 +18,15 @@ import modules.config as config
 # Params:       src_dir - Path to the src directory.
 # Return:       paths - Dictionary of lua files and paths.
 #-------------------------------------------------------------------------------
-def get_file_paths(src_dir):
+def get_file_paths(src_path):
   paths = {}
 
+  if not os.path.isdir(src_path):
+    raise Exception(f"Directory '{src_path}' not found.")
+
   # Walk directory structure
-  for root, _, files in os.walk(src_dir):
-    # Iterate files
+  for root, _, files in os.walk(src_path):
+  # Iterate files
     for file in files:
       # Get file extension
       file_ext = file[-4:]
@@ -31,6 +34,9 @@ def get_file_paths(src_dir):
       if file_ext == ".lua":
         module_name = file[:-4]
         paths[module_name] = os.path.join(root, file)
+
+  if not paths:
+      raise Exception(f"Directory '{src_path}' does not contain entry file.")
 
   return paths
 
@@ -59,7 +65,7 @@ def get_dependency_list(module_name, file_paths, list = []):
           if not dependency in list:
             list.append(dependency)
   except:
-    print(f"Error: The file '{file_path}' was not found!")
+    raise Exception("Read file operation could not be completed.")
 
   return list
 
@@ -69,15 +75,16 @@ def get_dependency_list(module_name, file_paths, list = []):
 # Return:       None.
 #-------------------------------------------------------------------------------
 def delete_directory(dir_path):
+  
   # Check if directory exists
   if not os.path.isdir(dir_path):
-    print(f"Delete Directory: '{dir_path}' does not exist.")
-    return
-  try:
+    raise Exception(f"Directory '{dir_path}' does not exist.")
+      
     # Delete directory
+  try:
     shutil.rmtree(dir_path)
-  except Exception as e:
-    print(f"Delete Directory Error: {e}")
+  except Exception:
+    raise Exception(f"Directory '{dir_path}' could not be deleted.")
 
 #-------------------------------------------------------------------------------
 # Description:  Creates a directory.
@@ -85,15 +92,17 @@ def delete_directory(dir_path):
 # Return:       None.
 #-------------------------------------------------------------------------------
 def create_directory(dir_path):
+
   # Check if directory exists
   if os.path.isdir(dir_path):
-    print(f"Create Directory: '{dir_path}' already exists.")
+    print(f"Directory '{dir_path}' already exists.")
     return
+
   try:
     # Create directory
     os.mkdir(dir_path)
-  except Exception as e:
-    print(f"Create Directory Error: {e}")
+  except:
+    raise Exception(f"Director '{dir_path}' could not be created.")
 
 #-------------------------------------------------------------------------------
 # Description:  Cleans (delete and recreate) a directory
@@ -123,10 +132,12 @@ def build(dependency_list, file_paths, app_config):
 
     # Read module src file
     try:
-      with open(file_paths[module_name], "r") as f:
+      file_path = file_paths[module_name]
+
+      with open(file_path, "r") as f:
         r_lines = list(f)
-    except Exception as e:
-      print(f"Build Error: {e}")
+    except:
+      raise Exception(f"Could not read from '{file_path}'.")
 
     # Start function wrap
 
@@ -156,10 +167,11 @@ def build(dependency_list, file_paths, app_config):
   
   # Write file
   try:
-    with open(f"./{app_config["out_path"]}/{root}.lunify.lua", "w") as f:
+    file_path = f"./{app_config["out_path"]}/{root}.lunify.lua"
+    with open(file_path, "w") as f:
       f.writelines(w_lines)
-  except Exception as e:
-    print(f"Build Error: {e}")
+  except:
+    raise Exception(f"Could not write to '{file_path}'.")
 
 #-------------------------------------------------------------------------------
 # Description:  The entry point of the applicaiton.
@@ -168,21 +180,32 @@ def build(dependency_list, file_paths, app_config):
 # Return:       None.
 #-------------------------------------------------------------------------------
 def app(app_config):
-  # Get file paths for project files
-  file_paths = get_file_paths(app_config["src_path"])
 
-  root = list(file_paths)[0]
-
-  # Create ordered and flattened dependency list
-  dependency_list = get_dependency_list(root, file_paths)
-
-  # Clean build directory
-  clean_directory(app_config["out_path"])
+  src_path = app_config["src_path"]
+  out_path = app_config["out_path"]
   
-  # Build project
-  build(dependency_list, file_paths, app_config)
+  try:
+    # Get file paths for project files
+    file_paths = get_file_paths(src_path)
+    
+    root = list(file_paths)[0]
+
+    # Create ordered and flattened dependency list
+    dependency_list = get_dependency_list(root, file_paths)
+
+    # Clean build directory
+    clean_directory(out_path)
+    
+    # Build project
+    build(dependency_list, file_paths, app_config)
+
+  except Exception as e:
+    print(f"Error: {e}")
 
 #-------------------------------------------------------------------------------
 if __name__ == "__main__":
+
+  print(os.getcwd())
+
   app_config = config.config(sys.argv)
   app(app_config)

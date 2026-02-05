@@ -37,7 +37,7 @@ def parse_and_validate_args(argv):
       next_arg = argv[i + 1]
       
       if not os.path.isdir(next_arg):
-        print(f"Error: Expected path after '{arg}'.")
+        print(f"Error: Valid path expected after '{arg}'.")
         continue
       
       config[flags[arg]] = next_arg
@@ -49,11 +49,13 @@ def parse_and_validate_args(argv):
 # Return:       config
 #-------------------------------------------------------------------------------
 def parse_and_validate_config_file():
-  file_path = "./lunify.conf"
+
+  pwd = os.getcwd()
+  file_path = f"{pwd}/lunify.conf"
 
   # Check config file exists
   if not os.path.isfile(file_path):
-    print(f"Config file '{file_path}' not found.")
+    print(f"Info: Config file '{file_path}' not found.")
     return {}
   
   # Read config file into dictionary
