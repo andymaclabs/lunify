@@ -1,6 +1,10 @@
 # Ignore test directory
 test/
 
+# Python
+__pycache__
+*.pyc
+
 # Windows
 Thumbs.db
 ehthumbs.db

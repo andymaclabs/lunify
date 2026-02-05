@@ -11,29 +11,7 @@ import re
 import shutil
 import sys
 
-#-------------------------------------------------------------------------------
-# Description:  Validates command line arguments.
-# Params:       args - The sys.argv object (command line arguments).
-# Return:       Valid arguements (Boolean).
-#-------------------------------------------------------------------------------
-def validate_args(args):
-  arg_1_valid = True
-  arg_2_valid = True
-
-  # Validate arg_1 - src directory
-  arg_1 = args[1]
-  if not os.path.isdir(arg_1):
-    arg_1_valid = False
-    print(f"Error: {arg_1} is not a valid directory.")
-  
-  # Validate arg_2 - build directory
-  arg_2 = args[2]
-  if not os.path.isdir(arg_2):
-    arg_2_valid = False
-    print(f"Error: {arg_1} is not a valid directory.")
-
-  return arg_1_valid and arg_2_valid
-
+import modules.config as config
 
 #-------------------------------------------------------------------------------
 # Description:  Walks the src directory and finds paths for all lua files.
@@ -93,7 +71,7 @@ def get_dependency_list(module_name, file_paths, list = []):
 def delete_directory(dir_path):
   # Check if directory exists
   if not os.path.isdir(dir_path):
-    print(f"Delete Directory: {dir_path} does not exist.")
+    print(f"Delete Directory: '{dir_path}' does not exist.")
     return
   try:
     # Delete directory
@@ -109,7 +87,7 @@ def delete_directory(dir_path):
 def create_directory(dir_path):
   # Check if directory exists
   if os.path.isdir(dir_path):
-    print(f"Create Directory: {dir_path} already exists.")
+    print(f"Create Directory: '{dir_path}' already exists.")
     return
   try:
     # Create directory
@@ -185,9 +163,9 @@ def build(dependency_list, file_paths, build_dir_path):
 #               build_dir_path - The path to the build directory.
 # Return:       None.
 #-------------------------------------------------------------------------------
-def app(src_dir_path, build_dir_path):
+def app(app_config):
   # Get file paths for project files
-  file_paths = get_file_paths(src_dir_path)
+  file_paths = get_file_paths(app_config["src_path"])
 
   root = list(file_paths)[0]
 
@@ -195,12 +173,12 @@ def app(src_dir_path, build_dir_path):
   dependency_list = get_dependency_list(root, file_paths)
 
   # Clean build directory
-  clean_directory(build_dir_path)
+  clean_directory(app_config["out_path"])
   
   # Build project
-  build(dependency_list, file_paths, build_dir_path)
+  build(dependency_list, file_paths, app_config["out_path"])
 
 #-------------------------------------------------------------------------------
 if __name__ == "__main__":
- if validate_args(sys.argv):
-  app(sys.argv[1], sys.argv[2])
+  app_config = config.config(sys.argv)
+  app(app_config)
