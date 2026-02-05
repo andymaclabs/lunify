@@ -111,7 +111,7 @@ def clean_directory(dir_path):
 #               build_dir_path - Path to the build directory.
 # Return:       None.
 #-------------------------------------------------------------------------------
-def build(dependency_list, file_paths, build_dir_path):
+def build(dependency_list, file_paths, app_config):
   w_lines = ["local lunify_module\n"]
 
   # Get root file and add to module list
@@ -129,6 +129,9 @@ def build(dependency_list, file_paths, build_dir_path):
       print(f"Build Error: {e}")
 
     # Start function wrap
+
+    w_lines.append(f"-- lunify -- {module_name} {"-" * 100}"[:80] + "\n")
+
     if not module_name == root:
       w_lines.append("lunify_module = function()\n")
 
@@ -144,7 +147,8 @@ def build(dependency_list, file_paths, build_dir_path):
         continue
       
       # Write line (indented)
-      w_lines.append(("" if module_name == root else "  ") + line)
+      indent = " " * app_config["tab_size"]
+      w_lines.append(("" if module_name == root else indent) + line)
 
     # End function wrap
     if not module_name == root:
@@ -152,7 +156,7 @@ def build(dependency_list, file_paths, build_dir_path):
   
   # Write file
   try:
-    with open(f"./{build_dir_path}/{root}.lunify.lua", "w") as f:
+    with open(f"./{app_config["out_path"]}/{root}.lunify.lua", "w") as f:
       f.writelines(w_lines)
   except Exception as e:
     print(f"Build Error: {e}")
@@ -176,7 +180,7 @@ def app(app_config):
   clean_directory(app_config["out_path"])
   
   # Build project
-  build(dependency_list, file_paths, app_config["out_path"])
+  build(dependency_list, file_paths, app_config)
 
 #-------------------------------------------------------------------------------
 if __name__ == "__main__":

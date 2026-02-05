@@ -23,8 +23,7 @@ def parse_and_validate_args(argv):
   }
 
   if argv_len < 2:
-    print("Info: No arguments found.")
-    return
+    return config
   
   if os.path.isdir(argv[1]):
     config["src_path"] = argv[1]
