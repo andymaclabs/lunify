@@ -3,15 +3,94 @@
 # Author:       Andrew "Shabadoo" Abbey
 # Description:  Merges lua project into single file.
 # Date:         03 Feb 2026
-# Updated:      05 Feb 2026
+# Updated:      06 Feb 2026
 #-------------------------------------------------------------------------------
 
+import json
 import os
 import re
 import shutil
 import sys
 
-import modules.config as config
+#-------------------------------------------------------------------------------
+# Description:  Validates command line arguments.
+# Params:       argv - The sys.argv object (command line arguments).
+# Return:       config.
+#-------------------------------------------------------------------------------
+def parse_and_validate_args(argv):
+  argv_len = len(argv)
+  config = {}
+  flags = {
+    "-s": "src_path",
+    "-o": "out_path"
+  }
+
+  if argv_len < 2:
+    return config
+  
+  if os.path.isdir(argv[1]):
+    config["src_path"] = argv[1]
+  
+  for i in range(argv_len):
+
+    arg = argv[i]
+    
+    if arg in flags and i < argv_len - 1:
+      
+      next_arg = argv[i + 1]
+      
+      if not os.path.isdir(next_arg):
+        print(f"Error: Valid path expected after '{arg}'.")
+        continue
+      
+      config[flags[arg]] = next_arg
+
+  return config
+
+#-------------------------------------------------------------------------------
+# Description:  Validates config file data.
+# Return:       config
+#-------------------------------------------------------------------------------
+def parse_and_validate_config_file():
+
+  pwd = os.getcwd()
+  file_path = f"{pwd}\\lunify.conf"
+
+  # Check config file exists
+  if not os.path.isfile(file_path):
+    print(f"Info: Config file '{file_path}' not found.")
+    return {}
+  
+  # Read config file into dictionary
+  try:
+    with open(file_path, "r") as f:
+      config = json.load(f)
+  except Exception as e:
+    print(f"Config Error: {e}")
+
+  return config
+
+#-------------------------------------------------------------------------------
+# Description:  Sets config for project.
+# Return:       config
+#-------------------------------------------------------------------------------
+def config(argv):
+  default_config = {
+    "src_path": ".\\src",
+    "out_path": ".\\build",
+    "tab_size": 4
+  }
+
+  configs = [
+    parse_and_validate_config_file(),
+    parse_and_validate_args(argv)
+  ]
+
+  for config in configs:
+    for key, value in config.items():
+      default_config[key] = value
+
+  return default_config
 
 #-------------------------------------------------------------------------------
 # Description:  Walks the src directory and finds paths for all lua files.
@@ -204,8 +283,5 @@ def app(app_config):
 
 #-------------------------------------------------------------------------------
 if __name__ == "__main__":
-
-  print(os.getcwd())
-
-  app_config = config.config(sys.argv)
+  app_config = config(sys.argv)
   app(app_config)
