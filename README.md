@@ -85,6 +85,8 @@ By defualt lunify will set:
 - src_path: ./src
 - out_path: ./build
 - tab_size: 4
+- strip_blank_lines: 0
+- strip_comments: 0
 
 ```
 my_project/
@@ -157,7 +159,9 @@ A config file (lunify.conf) can be added to the project directory.
 {
   "src_path": "./src",
   "out_path": "./build",
-  "tab_size": 2
+  "tab_size": 2,
+  "strip_blank_lines": 1,
+  "strip_comments": 1
 }
 ```
 

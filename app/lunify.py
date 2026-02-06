@@ -78,7 +78,9 @@ def config(argv):
   default_config = {
     "src_path": ".\\src",
     "out_path": ".\\build",
-    "tab_size": 4
+    "tab_size": 4,
+    "strip_blank_lines": 0,
+    "strip_comments": 0
   }
 
   configs = [
@@ -244,7 +246,11 @@ def build(dependency_list, file_paths, app_config):
     for line in r_lines:
 
       # Skip blank lines
-      if line.strip() == "":
+      if app_config["strip_blank_lines"] and line.strip() == "":
+        continue
+
+      # Skip comment lines
+      if app_config["strip_comments"] and line.strip()[:2] == "--":
         continue
       
       # Skip require statements
