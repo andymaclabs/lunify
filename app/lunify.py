@@ -100,6 +100,8 @@ def config(argv):
 def get_file_paths(src_path):
   paths = {}
 
+  print('Gathering files...')
+
   if not os.path.isdir(src_path):
     raise Exception(f"Directory '{src_path}' not found.")
 
@@ -112,7 +114,10 @@ def get_file_paths(src_path):
       # Add to path dictionary if lua file
       if file_ext == ".lua":
         module_name = file[:-4]
-        paths[module_name] = os.path.join(root, file)
+        file_path = os.path.join(root, file)
+        paths[module_name] = file_path
+
+        print(f"\t- Adding '{module_name}' at '{file_path}'.")
 
   if not paths:
       raise Exception(f"Directory '{src_path}' does not contain entry file.")
@@ -127,7 +132,6 @@ def get_file_paths(src_path):
 # Return:       list - Dependency list for the project.
 #-------------------------------------------------------------------------------
 def get_dependency_list(module_name, file_paths, list = []):
-
   file_path = file_paths[module_name]
 
   try:
@@ -143,6 +147,8 @@ def get_dependency_list(module_name, file_paths, list = []):
           # Add to dependency list if not already added
           if not dependency in list:
             list.append(dependency)
+
+            print(f"\t- Importing '{dependency}'.")
   except:
     raise Exception("Read file operation could not be completed.")
 
@@ -200,18 +206,27 @@ def clean_directory(dir_path):
 # Return:       None.
 #-------------------------------------------------------------------------------
 def build(dependency_list, file_paths, app_config):
-  w_lines = ["local lunify_module\n"]
+  w_lines = [
+    f"-- {"=" * 77}\n",
+    "-- BUILT WITH LUNIFY - BY SHABADOO\n"
+    f"-- {"=" * 77}\n",
+    "local lunify_module\n"
+  ]
 
   # Get root file and add to module list
   root = list(file_paths)[0]
   dependency_list.append(root)
   module_list = dependency_list
 
+  print("Building...")
+
   for module_name in module_list:
 
     # Read module src file
     try:
       file_path = file_paths[module_name]
+
+      print(f"\t- Reading '{module_name}' at '{file_path}'.")
 
       with open(file_path, "r") as f:
         r_lines = list(f)
@@ -246,11 +261,16 @@ def build(dependency_list, file_paths, app_config):
   
   # Write file
   try:
-    file_path = f"./{app_config["out_path"]}/{root}.lunify.lua"
+    file_path = f"{app_config["out_path"]}\\{root}.lunify.lua"
+
+    print(f"\t- Writing '{file_path}'.")
+
     with open(file_path, "w") as f:
       f.writelines(w_lines)
   except:
     raise Exception(f"Could not write to '{file_path}'.")
+  
+  print(f"Lunify complete.")
 
 #-------------------------------------------------------------------------------
 # Description:  The entry point of the applicaiton.
@@ -262,6 +282,8 @@ def app(app_config):
 
   src_path = app_config["src_path"]
   out_path = app_config["out_path"]
+
+  print(f"Lunifying '{src_path}' --> '{out_path}'")
   
   try:
     # Get file paths for project files
@@ -270,6 +292,7 @@ def app(app_config):
     root = list(file_paths)[0]
 
     # Create ordered and flattened dependency list
+    print("Determining module import order...")
     dependency_list = get_dependency_list(root, file_paths)
 
     # Clean build directory
