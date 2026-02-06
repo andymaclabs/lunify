@@ -70,6 +70,14 @@ A couple of things to note:
 - Only files that are linked to the entry point file through require statements will be added to the build file. Lunify builds a dependency tree recursively from the main file.
 - This app has not been tested extensively, so please provide constructive feedback.
 
+## Config
+
+Lunify will use config settings in the following order of precedence:
+
+1. Command Line (if provided)
+2. Config file (lunify.conf)
+3. Default config
+
 ### Default config
 
 By defualt lunify will set:
