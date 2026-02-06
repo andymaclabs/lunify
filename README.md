@@ -17,7 +17,7 @@ Lunify analyses require statements, develops a module dependency tree, wraps mod
 ```
 local M = {}
 
-local message = "Hello from A!"
+M.message = "Hello from A!"
 
 function M.speak(text)
   print(text)
@@ -42,7 +42,7 @@ module_a.speak(module_a.message)
 local lunify_module
 lunify_module = function()
   local M = {}
-  local message = "Hello from A!"
+  M.message = "Hello from A!"
   function M.speak(text)
     print(text)
   end
