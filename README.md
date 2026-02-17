@@ -66,7 +66,7 @@ Usage is simple:
 
 A couple of things to note:
 
-- Project should have a single main Lua file in the source directory. All other Lua code should be in a sub-directory (e.g ./src/modules). You can call this file whatever you like, but there must only be one lua file.
+- Define you project entry point (default "./src/Main.lua"). This is where Lunify will begin the dependency search.
 - Only files that are linked to the entry point file through require statements will be added to the build file. Lunify builds a dependency tree recursively from the main file.
 - This app has not been tested extensively, so please provide constructive feedback.
 
@@ -84,6 +84,7 @@ By defualt lunify will set:
 
 - src_path: ./src
 - out_path: ./build
+- entry_point: 'Main'
 - tab_size: 4
 - strip_blank_lines: 0
 - strip_comments: 0
@@ -132,8 +133,12 @@ my_project/
 
 Flags can be used as well (order does not matter):
 
+- -s: source directory path
+- -o: output directory path
+- -e: entry point
+
 ```
-python lunify.py -s ./custom_src_path -o ./custom/out_path
+python lunify.py -s ./custom_src_path -o ./custom/out_path -e Main
 ```
 
 ```
