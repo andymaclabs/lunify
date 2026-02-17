@@ -2,8 +2,8 @@
 # File:         lunify.py
 # Author:       Andrew "Shabadoo" Abbey
 # Description:  Merges lua project into single file.
-# Date:         03 Feb 2026
-# Updated:      06 Feb 2026
+# Date:         03 Feb 26
+# Edit:         17 Feb 26
 #-------------------------------------------------------------------------------
 
 import json
@@ -22,7 +22,8 @@ def parse_and_validate_args(argv):
   config = {}
   flags = {
     "-s": "src_path",
-    "-o": "out_path"
+    "-o": "out_path",
+    "-e": "entry_point"
   }
 
   if argv_len < 2:
@@ -39,7 +40,7 @@ def parse_and_validate_args(argv):
       
       next_arg = argv[i + 1]
       
-      if not os.path.isdir(next_arg):
+      if flags[arg] != "entry_point" and not os.path.isdir(next_arg):
         print(f"Error: Valid path expected after '{arg}'.")
         continue
       
@@ -54,11 +55,11 @@ def parse_and_validate_args(argv):
 def parse_and_validate_config_file():
 
   pwd = os.getcwd()
-  file_path = f"{pwd}\\lunify.conf"
+  file_path = os.path.join(pwd, "lunify.conf")
 
   # Check config file exists
   if not os.path.isfile(file_path):
-    print(f"Info: Config file '{file_path}' not found.")
+    print(f"Info: Config file '{file_path}' not found. Using defaults")
     return {}
   
   # Read config file into dictionary
@@ -76,8 +77,9 @@ def parse_and_validate_config_file():
 #-------------------------------------------------------------------------------
 def config(argv):
   default_config = {
-    "src_path": ".\\src",
-    "out_path": ".\\build",
+    "src_path": os.path.join(".", "src"),
+    "out_path": os.path.join(".", "build"),
+    "entry_point": "Main",
     "tab_size": 4,
     "strip_blank_lines": 0,
     "strip_comments": 0
@@ -116,13 +118,18 @@ def get_file_paths(src_path):
       # Add to path dictionary if lua file
       if file_ext == ".lua":
         module_name = file[:-4]
+
+        # Regex to check for valid Lua identifiers
+        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', module_name):
+          raise Exception(f"Invalid Filename: '{file}'. Name must be a valid Lua variable (no hyphens/spaces).")
+
         file_path = os.path.join(root, file)
         paths[module_name] = file_path
 
         print(f"\t- Adding '{module_name}' at '{file_path}'.")
 
   if not paths:
-      raise Exception(f"Directory '{src_path}' does not contain entry file.")
+    raise Exception(f"Directory '{src_path}' does not contain entry file.")
 
   return paths
 
@@ -131,30 +138,54 @@ def get_file_paths(src_path):
 #               the project.
 # Params:       module_name - Module name (excluding extension .lua).
 #               file_paths - Dictionary of file paths.
+#               resolved - List of already processed modules.
+#               seen - Set modules in the current recursion stack.
 # Return:       list - Dependency list for the project.
 #-------------------------------------------------------------------------------
-def get_dependency_list(module_name, file_paths, list = []):
-  file_path = file_paths[module_name]
+def get_dependency_list(module_name, file_paths, resolved=None, seen=None):
+  if resolved is None: resolved = []
+  if seen is None: seen = set()
+
+  # Circular dependency check
+  if module_name in seen:
+    raise Exception(f"Circular dependency detected! Cycle: {' -> '.join(seen)} -> {module_name}")
+
+  # If already built this module, skip it
+  if module_name in resolved:
+    return resolved
+  
+  # Track current path
+  seen.add(module_name)
+
+  file_path = file_paths.get(module_name)
+  if not file_path:
+    raise Exception(f"Module '{module_name}' required but not found.")
 
   try:
     # Read src file
     with open(file_path, "r") as f:
-      for line in f:
-        # Search for dependency statements
-        match = re.search(r'require\(\"(.*?)\"\)', line)
-        if match:
-          dependency = match.group(1)
-          # Recursively search for dependencies
-          get_dependency_list(dependency, file_paths)
-          # Add to dependency list if not already added
-          if not dependency in list:
-            list.append(dependency)
+      
+      active_lines = [line for line in f if not line.strip().startswith("--")]
+      content = "".join(active_lines)
+      
+      deps = re.findall(r'require\(\"(.*?)\"\)', content)
 
-            print(f"\t- Importing '{dependency}'.")
-  except:
-    raise Exception("Read file operation could not be completed.")
+      for dep in deps:
+        get_dependency_list(dep, file_paths, resolved, seen)
 
-  return list
+  except Exception as e:
+        if "Circular dependency" in str(e): raise e
+        raise Exception(f"Error processing '{module_name}': {e}")
+
+  # Backtracking: Remove from current stack
+  seen.remove(module_name)
+
+  # Add to final list
+  resolved.append(module_name)
+
+  print(f"\t- Resolved '{module_name}' (Dependencies: {len(deps)})")
+
+  return resolved
 
 #-------------------------------------------------------------------------------
 # Description:  Deletes a directory.
@@ -208,16 +239,27 @@ def clean_directory(dir_path):
 # Return:       None.
 #-------------------------------------------------------------------------------
 def build(dependency_list, file_paths, app_config):
+  
+  banner_lines = get_banner()
+  
   w_lines = [
-    f"-- {"=" * 77}\n",
+    f"-- {'=' * 97}\n",
     "-- BUILT WITH LUNIFY - BY SHABADOO\n"
-    f"-- {"=" * 77}\n",
-    "local lunify_module\n"
+    f"-- {'=' * 97}\n",
   ]
 
+  if banner_lines:
+    w_lines.extend(banner_lines)
+    w_lines.extend([f"-- {'=' * 97}\n"])
+
+  w_lines.extend(["local lunify_module\n"])
+
   # Get root file and add to module list
-  root = list(file_paths)[0]
-  dependency_list.append(root)
+  root = app_config["entry_point"]
+
+  if root not in dependency_list:
+    dependency_list.append(root)
+
   module_list = dependency_list
 
   print("Building...")
@@ -237,7 +279,7 @@ def build(dependency_list, file_paths, app_config):
 
     # Start function wrap
 
-    w_lines.append(f"-- lunify -- {module_name} {"-" * 100}"[:80] + "\n")
+    w_lines.append(f"-- lunify -- {module_name} {'-' * 100}"[:100] + "\n")
 
     if not module_name == root:
       w_lines.append("lunify_module = function()\n")
@@ -267,14 +309,15 @@ def build(dependency_list, file_paths, app_config):
   
   # Write file
   try:
-    file_path = f"{app_config["out_path"]}\\{root}.lunify.lua"
+    out_filename = f"{root}.lunify.lua"
+    file_path = os.path.join(app_config["out_path"], out_filename)
 
     print(f"\t- Writing '{file_path}'.")
 
     with open(file_path, "w") as f:
       f.writelines(w_lines)
-  except:
-    raise Exception(f"Could not write to '{file_path}'.")
+  except Exception as e:
+    raise Exception(f"Could not write to '{file_path}'. Reason: {e}")
   
   print(f"Lunify complete.")
 
@@ -288,6 +331,7 @@ def app(app_config):
 
   src_path = app_config["src_path"]
   out_path = app_config["out_path"]
+  entry_point = app_config["entry_point"]
 
   print(f"Lunifying '{src_path}' --> '{out_path}'")
   
@@ -295,7 +339,10 @@ def app(app_config):
     # Get file paths for project files
     file_paths = get_file_paths(src_path)
     
-    root = list(file_paths)[0]
+    if entry_point not in file_paths:
+      raise Exception(f"Entry point '{entry_point}'.lua not found.")
+
+    root = entry_point
 
     # Create ordered and flattened dependency list
     print("Determining module import order...")
@@ -309,6 +356,21 @@ def app(app_config):
 
   except Exception as e:
     print(f"Error: {e}")
+
+#-------------------------------------------------------------------------------
+# Description:  Gets a custom ascii banner for Lunify output.
+# Return:       An ascii banner from banner.txt
+#-------------------------------------------------------------------------------
+def get_banner():
+  banner_path = os.path.join(os.getcwd(), "banner.txt")
+  if not os.path.isfile(banner_path):
+    return []
+  
+  try:
+    with open(banner_path, "r", encoding="utf-8") as f:
+      return [f"-- {line}" for line in f]
+  except:
+    return []
 
 #-------------------------------------------------------------------------------
 if __name__ == "__main__":
