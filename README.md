@@ -164,7 +164,7 @@ A config file (lunify.conf) can be added to the project directory.
 {
   "src_path": "./src",
   "out_path": "./build",
-  "entry_point" "Main"
+  "entry_point" "Main",
   "tab_size": 2,
   "strip_blank_lines": 1,
   "strip_comments": 1
